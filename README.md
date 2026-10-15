@@ -39,6 +39,7 @@ Initiative C was selected because it redesigns the end-to-end customer journey, 
 |---|---|
 | `SmartWash DigitalTransformation.docx` | The full report (Word) |
 | `SmartWash_Presentation.pdf` | slide presentation summarizing the decision, journey, automation, data findings, and recommendations |
+| `SmartWash_Dashboard.html` | Interactive dashboard (download and open in a browser) |
 | `README.md` | This file |
 
 ## Notes
