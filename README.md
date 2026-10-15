@@ -3,7 +3,7 @@
 A capstone project that advises a traditional laundry company on choosing a genuine digital transformation and redesigning its pickup-to-delivery journey.
 
 **Author:** Ghadah Falah Bani Ali
-
+![Dashboard](SmartWash_Dashboard.png)
 ## Project summary
 
 Three initiatives were evaluated:
