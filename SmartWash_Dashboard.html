@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartWash Operations Dashboard</title>
+<style>
+html{color-scheme:light dark}body{margin:0}
+/* Layout: navy title band, slicer row, KPI cards, a grid of cross-filtering charts, then the order table. */
+:root {
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink2: #52514e;
+  --muted: #6f6d68;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --good: #0ca30c;
+  --crit: #d03b3b;
+  --good-text: #006300;
+  --crit-text: #a82b2b;
+  --brand: #17365d;
+  --brand-ink: #ffffff;
+  --chip: #ffffff;
+  --chip-on: #17365d;
+  --chip-on-ink: #ffffff;
+  --wash: rgba(11, 11, 11, 0.05);
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink2: #c3c2b7;
+    --muted: #a3a198;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --good-text: #0ca30c;
+    --crit-text: #ec6a6a;
+    --brand: #0f2742;
+    --chip: #1a1a19;
+    --chip-on: #3987e5;
+    --chip-on-ink: #0b0b0b;
+    --wash: rgba(255, 255, 255, 0.07);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink2: #c3c2b7;
+  --muted: #a3a198;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --s1: #3987e5;
+  --s2: #d95926;
+  --good-text: #0ca30c;
+  --crit-text: #ec6a6a;
+  --brand: #0f2742;
+  --chip: #1a1a19;
+  --chip-on: #3987e5;
+  --chip-on-ink: #0b0b0b;
+  --wash: rgba(255, 255, 255, 0.07);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+
+.band {
+  background: var(--brand);
+  color: var(--brand-ink);
+  padding-block: 20px 18px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.band-in, .wrap { max-width: 1240px; margin: 0 auto; }
+.band-in { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+.band h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
+.band p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+.band .meta { font-size: 13px; opacity: 0.85; text-align: right; }
+
+.wrap {
+  padding-block: 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.slicers {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: flex-start;
+}
+.slicer { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.slicer h2, .card h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: var(--chip); border: 1px solid var(--axis); border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; font-size: 13px;
+}
+.chip:hover { background: var(--wash); }
+.chip[aria-pressed="true"] { background: var(--chip-on); border-color: var(--chip-on); color: var(--chip-on-ink); font-weight: 600; }
+.reset {
+  margin-left: auto; align-self: center; background: transparent; border: 1px solid var(--axis);
+  border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+}
+.reset:hover { background: var(--wash); }
+.reset[disabled] { opacity: 0.45; cursor: default; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi .lbl { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink2); }
+.kpi .val { font-size: 34px; line-height: 1.15; font-weight: 700; }
+.kpi .val small { font-size: 16px; font-weight: 500; color: var(--ink2); }
+.kpi .sub { font-size: 13px; color: var(--ink2); }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card .note { margin: 0; font-size: 12px; color: var(--ink2); }
+
+.hbars { display: flex; flex-direction: column; gap: 6px; }
+.hrow {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) 76px; align-items: center; gap: 10px;
+  background: transparent; border: 0; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; text-align: left; cursor: pointer; width: calc(100% + 12px);
+}
+.hrow:hover { background: var(--wash); }
+.hrow .name { font-size: 13px; overflow-wrap: anywhere; }
+.hrow .num { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 20px; border-bottom: 1px solid transparent; }
+.bar { position: absolute; left: 0; top: 2px; height: 16px; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bar.over { background: var(--s2); }
+.hrow.dim { opacity: 0.4; }
+.hrow.on { background: var(--wash); box-shadow: inset 3px 0 0 var(--s1); }
+.limit { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 2px dashed var(--ink2); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.cols { display: flex; align-items: flex-end; gap: 10px; height: 168px; padding-top: 18px; border-bottom: 1px solid var(--axis); }
+.col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.col .cv { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.col .cb { width: 100%; max-width: 56px; background: var(--s1); border-radius: 4px 4px 0 0; min-height: 2px; }
+.colx { display: flex; gap: 10px; }
+.colx span { flex: 1; text-align: center; font-size: 12px; color: var(--ink2); }
+
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+th { text-align: left; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink2); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.attn td:first-child { box-shadow: inset 3px 0 0 var(--s2); }
+.pill { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill.good { color: var(--good-text); }
+.pill.crit { color: var(--crit-text); }
+.empty { padding: 20px 4px; color: var(--ink2); }
+.foot { font-size: 12px; color: var(--ink2); margin: 0; }
+
+#tip {
+  position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 260px;
+  background: var(--ink); color: var(--page); padding: 6px 9px; border-radius: 6px; font-size: 12px; line-height: 1.35;
+}
+@media (max-width: 480px) {
+  .band .meta { text-align: left; }
+  .hrow { grid-template-columns: 84px minmax(0, 1fr) 70px; gap: 8px; }
+  .reset { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar, .cb { transition: width 0.25s ease, height 0.25s ease; }
+}
+</style>
+</head>
+<body>
+
+<header class="band">
+  <div class="band-in">
+    <div>
+      <h1>SmartWash Operations Dashboard</h1>
+      <p>Pickup-to-delivery performance, 1 to 10 July 2026. Select a slicer or click a bar to filter every visual.</p>
+    </div>
+    <div class="meta" id="count" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="slicers" aria-label="Filters" id="slicers"></section>
+  <section class="kpis" aria-label="Key figures" id="kpis"></section>
+  <section class="charts" aria-label="Charts">
+    <article class="card"><h2>Orders by service</h2><div class="hbars" id="c-service"></div></article>
+    <article class="card"><h2>Orders by status</h2><div class="hbars" id="c-status"></div></article>
+    <article class="card">
+      <h2>Average turnaround by driver (hours)</h2>
+      <div class="hbars" id="c-driver"></div>
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Within limit</span><span><i class="sw" style="background:var(--s2)"></i>Over limit ▲</span><span>Dashed line: 36 h alert limit</span></div>
+    </article>
+    <article class="card">
+      <h2>Average turnaround by service (hours)</h2>
+      <div class="hbars" id="c-svc-time"></div>
+      <p class="note">Completed orders only. Two of the three completed Ironing orders were in the South.</p>
+    </article>
+    <article class="card">
+      <h2>Customer ratings</h2>
+      <div class="cols" id="c-rating"></div>
+      <div class="colx" id="c-rating-x"></div>
+      <p class="note">Number of orders per star rating. Orders without a rating are left out.</p>
+    </article>
+  </section>
+  <section class="card" aria-label="Order table">
+    <h2>Orders</h2>
+    <div class="tablewrap" id="table"></div>
+  </section>
+  <p class="foot">Fictional data only, no personal information. The 36 hour limit is a proposed target for the pilot. Averages use completed orders (turnaround) and rated orders (rating).</p>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  var RAW = [
+    ["SW-001","2026-07-01","North","Wash & Fold","Omar","Completed",22,5,"Fast pickup and clean clothes."],
+    ["SW-002","2026-07-01","South","Dry Cleaning","Lina","Completed",38,3,"Delivery was late but quality was good."],
+    ["SW-003","2026-07-02","Central","Wash & Fold","Omar","Completed",25,4,"Good service and polite driver."],
+    ["SW-004","2026-07-02","South","Ironing","Lina","Completed",42,2,"I received no update and waited too long."],
+    ["SW-005","2026-07-03","North","Dry Cleaning","Omar","Completed",29,4,"Good cleaning but pickup confirmation was slow."],
+    ["SW-006","2026-07-03","Central","Wash & Fold","Sara","Completed",20,5,"Excellent and very quick."],
+    ["SW-007","2026-07-04","South","Wash & Fold","Lina","Completed",36,3,"Clothes were clean, but delivery was delayed."],
+    ["SW-008","2026-07-04","North","Ironing","Omar","Cancelled",null,null,"Cancelled because pickup time was not confirmed."],
+    ["SW-009","2026-07-05","Central","Dry Cleaning","Sara","Completed",24,5,"Professional service."],
+    ["SW-010","2026-07-05","South","Wash & Fold","Lina","Completed",41,2,"One item was missing from the delivery."],
+    ["SW-011","2026-07-06","North","Wash & Fold","Omar","Completed",23,5,"Everything was smooth."],
+    ["SW-012","2026-07-06","Central","Ironing","Sara","In Progress",null,null,"Waiting for delivery."],
+    ["SW-013","2026-07-07","South","Dry Cleaning","Lina","Completed",35,3,"The result was good but communication was poor."],
+    ["SW-014","2026-07-07","North","Wash & Fold","Omar","Completed",21,5,"Very satisfied."],
+    ["SW-015","2026-07-08","Central","Wash & Fold","Sara","Completed",26,4,"Good overall."],
+    ["SW-016","2026-07-08","South","Ironing","Lina","Completed",44,2,"The driver arrived much later than promised."],
+    ["SW-017","2026-07-09","North","Dry Cleaning","Omar","Completed",27,4,"Clean and well packed."],
+    ["SW-018","2026-07-09","Central","Wash & Fold","Sara","Completed",19,5,"Quick and easy."],
+    ["SW-019","2026-07-10","South","Wash & Fold","Lina","Open",null,null,"Pickup requested."],
+    ["SW-020","2026-07-10","North","Ironing","Omar","Completed",30,4,"Good service."]
+  ];
+  var DATA = RAW.map(function (r) {
+    return { id: r[0], date: r[1], area: r[2], service: r[3], driver: r[4], status: r[5], hrs: r[6], rating: r[7], comment: r[8] };
+  });
+  var DIMS = {
+    area: ["North", "Central", "South"],
+    service: ["Wash & Fold", "Dry Cleaning", "Ironing"],
+    driver: ["Omar", "Sara", "Lina"],
+    status: ["Completed", "In Progress", "Open", "Cancelled"]
+  };
+  var LABEL = { area: "Area", service: "Service", driver: "Driver", status: "Status" };
+  var LIMIT = 36, SCALE = 48;
+  var sel = { area: new Set(), service: new Set(), driver: new Set(), status: new Set() };
+
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+  function avg(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; }
+  function f1(v) { return v == null ? "–" : v.toFixed(1); }
+  function filtered(skip) {
+    return DATA.filter(function (r) {
+      return Object.keys(sel).every(function (k) { return k === skip || !sel[k].size || sel[k].has(r[k]); });
+    });
+  }
+  function anySel() { return Object.keys(sel).some(function (k) { return sel[k].size; }); }
+  function $(id) { return document.getElementById(id); }
+
+  function renderSlicers() {
+    var h = Object.keys(DIMS).map(function (d) {
+      return '<div class="slicer"><h2>' + LABEL[d] + '</h2><div class="chips">' +
+        DIMS[d].map(function (v) {
+          return '<button type="button" class="chip" data-dim="' + d + '" data-val="' + esc(v) + '" aria-pressed="' + sel[d].has(v) + '">' + esc(v) + '</button>';
+        }).join("") + '</div></div>';
+    }).join("");
+    h += '<button type="button" class="reset" id="reset"' + (anySel() ? "" : " disabled") + '>Clear filters</button>';
+    $("slicers").innerHTML = h;
+  }
+
+  function renderKpis(rows) {
+    var done = rows.filter(function (r) { return r.status === "Completed"; });
+    var hrs = done.map(function (r) { return r.hrs; });
+    var rated = rows.filter(function (r) { return r.rating != null; }).map(function (r) { return r.rating; });
+    var over = hrs.filter(function (h) { return h > LIMIT; }).length;
+    var attn = rows.filter(function (r) { return r.status !== "Completed" || (r.rating != null && r.rating <= 2); }).length;
+    var pct = rows.length ? Math.round(done.length / rows.length * 100) : 0;
+    var k = [
+      ["Total orders", String(rows.length), "of " + DATA.length + " in the dataset"],
+      ["Completed", String(done.length), pct + "% completion rate"],
+      ["Avg turnaround", rows.length && hrs.length ? f1(avg(hrs)) + " <small>h</small>" : "–", over + " completed order" + (over === 1 ? "" : "s") + " over " + LIMIT + " h"],
+      ["Avg rating", rated.length ? avg(rated).toFixed(2) + " <small>/ 5</small>" : "–", rated.length + " rated order" + (rated.length === 1 ? "" : "s")],
+      ["Needs attention", String(attn), "not completed, or rated 1 to 2"]
+    ];
+    $("kpis").innerHTML = k.map(function (x) {
+      return '<div class="kpi"><div class="lbl">' + x[0] + '</div><div class="val">' + x[1] + '</div><div class="sub">' + x[2] + '</div></div>';
+    }).join("");
+  }
+
+  function hrow(dim, v, width, text, opts) {
+    opts = opts || {};
+    var on = sel[dim].has(v), dim_ = sel[dim].size && !on;
+    return '<button type="button" class="hrow' + (on ? " on" : "") + (dim_ ? " dim" : "") + '" data-dim="' + dim + '" data-val="' + esc(v) + '" data-tip="' + esc(opts.tip || (v + ": " + text)) + '" aria-pressed="' + on + '">' +
+      '<span class="name">' + esc(v) + '</span>' +
+      '<span class="track">' + (opts.limit ? '<i class="limit" style="left:' + (LIMIT / SCALE * 100) + '%"></i>' : "") +
+      '<i class="bar' + (opts.over ? " over" : "") + '" style="width:' + width + '%"></i></span>' +
+      '<span class="num">' + text + '</span></button>';
+  }
+
+  function countChart(dim, id) {
+    var rows = filtered(dim);
+    var n = DIMS[dim].map(function (v) { return rows.filter(function (r) { return r[dim] === v; }).length; });
+    var max = Math.max(1, Math.max.apply(null, n));
+    $(id).innerHTML = DIMS[dim].map(function (v, i) {
+      var tip = v + ": " + n[i] + " order" + (n[i] === 1 ? "" : "s");
+      return hrow(dim, v, n[i] / max * 100, String(n[i]), { tip: tip });
+    }).join("");
+  }
+
+  function timeChart(dim, id) {
+    var rows = filtered(dim).filter(function (r) { return r.status === "Completed"; });
+    $(id).innerHTML = DIMS[dim].map(function (v) {
+      var sub = rows.filter(function (r) { return r[dim] === v; });
+      var a = avg(sub.map(function (r) { return r.hrs; }));
+      var over = a != null && a > LIMIT;
+      var tip = v + ": " + (a == null ? "no completed orders" : f1(a) + " h average over " + sub.length + " completed order" + (sub.length === 1 ? "" : "s"));
+      return hrow(dim, v, a == null ? 0 : a / SCALE * 100, a == null ? "–" : f1(a) + (over ? " ▲" : ""), { limit: true, over: over, tip: tip });
+    }).join("");
+  }
+
+  function ratingChart(rows) {
+    var rated = rows.filter(function (r) { return r.rating != null; });
+    var n = [1, 2, 3, 4, 5].map(function (s) { return rated.filter(function (r) { return r.rating === s; }).length; });
+    var max = Math.max(1, Math.max.apply(null, n));
+    $("c-rating").innerHTML = n.map(function (c, i) {
+      return '<div class="col" data-tip="' + (i + 1) + ' star: ' + c + ' order' + (c === 1 ? "" : "s") + '"><span class="cv">' + c + '</span><div class="cb" style="height:' + (c / max * 120) + 'px"></div></div>';
+    }).join("");
+    $("c-rating-x").innerHTML = [1, 2, 3, 4, 5].map(function (s) { return "<span>" + s + " ★</span>"; }).join("");
+  }
+
+  function renderTable(rows) {
+    if (!rows.length) { $("table").innerHTML = '<p class="empty">No orders match these filters. Clear a filter to see orders again.</p>'; return; }
+    var pill = function (s) {
+      if (s === "Completed") return '<span class="pill good">✓ Completed</span>';
+      if (s === "Cancelled") return '<span class="pill crit">✕ Cancelled</span>';
+      if (s === "In Progress") return '<span class="pill">◐ In Progress</span>';
+      return '<span class="pill">○ Open</span>';
+    };
+    var h = '<table><thead><tr><th>Order</th><th>Date</th><th>Area</th><th>Service</th><th>Driver</th><th>Status</th><th class="n">Hours</th><th class="n">Rating</th><th>Comment</th></tr></thead><tbody>';
+    h += rows.map(function (r) {
+      var attn = r.status !== "Completed" || (r.rating != null && r.rating <= 2);
+      return '<tr' + (attn ? ' class="attn"' : "") + '><td>' + r.id + '</td><td>' + r.date + '</td><td>' + r.area + '</td><td>' + esc(r.service) + '</td><td>' + r.driver + '</td><td>' + pill(r.status) + '</td><td class="n">' + (r.hrs == null ? "–" : r.hrs) + '</td><td class="n">' + (r.rating == null ? "–" : r.rating) + '</td><td>' + esc(r.comment) + '</td></tr>';
+    }).join("");
+    $("table").innerHTML = h + "</tbody></table>";
+  }
+
+  function render() {
+    var rows = filtered(null);
+    renderSlicers();
+    renderKpis(rows);
+    countChart("service", "c-service");
+    countChart("status", "c-status");
+    timeChart("driver", "c-driver");
+    timeChart("service", "c-svc-time");
+    ratingChart(rows);
+    renderTable(rows);
+    $("count").textContent = "Showing " + rows.length + " of " + DATA.length + " orders";
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-dim][data-val]");
+    if (t) {
+      var d = t.getAttribute("data-dim"), v = t.getAttribute("data-val");
+      if (sel[d].has(v)) sel[d].delete(v); else sel[d].add(v);
+      render();
+      return;
+    }
+    if (e.target.closest("#reset")) {
+      Object.keys(sel).forEach(function (k) { sel[k].clear(); });
+      render();
+    }
+  });
+
+  var tip = $("tip");
+  document.addEventListener("mouseover", function (e) {
+    var t = e.target.closest("[data-tip]");
+    if (!t) { tip.style.display = "none"; return; }
+    tip.textContent = t.getAttribute("data-tip");
+    tip.style.display = "block";
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (tip.style.display === "none") return;
+    var x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+    tip.style.left = Math.max(8, x) + "px";
+    tip.style.top = (e.clientY + 16) + "px";
+  });
+  document.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
